@@ -1,0 +1,9 @@
+flowchart LR
+    User(("Market watcher"))
+    System["SSE Live Ticker"]
+    Browser["Web browser"]
+    Providers["Planned data providers<br/>CoinGecko / Frankfurter / Yahoo proxy"]
+
+    User --> Browser
+    Browser -->|HTTP + EventSource| System
+    System -. future provider adapters .-> Providers

@@ -1,0 +1,11 @@
+node_modules/
+.git/
+.env
+*.log
+coverage/
+dist/
+ticker.db
+docs/demo/*.mp4
+docs/screenshots/*.png
+docs/qa/lighthouse.json
+PROJE-RAPORU-SABLON.docx

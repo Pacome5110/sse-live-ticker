@@ -1,0 +1,11 @@
+flowchart TD
+    User(("User"))
+    Web["Static frontend<br/>HTML / CSS / JS"]
+    API["Node.js API<br/>Express + SSE"]
+    DB[("SQLite<br/>users / favorites / alerts / refresh_tokens")]
+
+    User --> Web
+    Web -->|GET /events| API
+    Web -->|REST /api/*| API
+    API --> DB
+    API -->|SSE price snapshots| Web

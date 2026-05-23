@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login - LiveTicker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="auth.css">
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <span class="auth-icon">📈</span>
+        <h2>LiveTicker</h2>
+      </div>
+      
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabLogin">Login</button>
+        <button class="auth-tab" id="tabRegister">Register</button>
+      </div>
+
+      <form id="authForm" class="auth-form">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" required autocomplete="current-password">
+        </div>
+        <div class="form-error" id="formError"></div>
+        <button type="submit" class="submit-btn" id="submitBtn">Login</button>
+      </form>
+    </div>
+  </div>
+  <script src="auth.js"></script>
+</body>
+</html>

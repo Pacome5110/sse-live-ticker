@@ -1,0 +1,28 @@
+{
+  "name": "sse-live-ticker",
+  "version": "1.0.0",
+  "description": "SSE Live Exchange Ticker — real-time stock prices via Server-Sent Events",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "a11y": "node scripts/a11y-static-check.js",
+    "capture:screenshots": "node scripts/capture-screenshots.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.9.0",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3"
+  },
+  "devDependencies": {
+    "supertest": "^7.2.2",
+    "vitest": "^4.1.5"
+  }
+}

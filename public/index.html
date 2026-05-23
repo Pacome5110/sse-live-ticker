@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="SSE Live Exchange Ticker — real-time stock prices powered by Server-Sent Events" />
+  <title>SSE Live Exchange Ticker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css?v=7" />
+  <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+
+  <!-- ── HEADER ── -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" class="brand-icon-svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 17.5 8.5 12l4 4L21 7.5" />
+            <path d="M21 7.5V14" />
+            <path d="M14.5 7.5H21" />
+          </svg>
+        </span>
+        <div>
+          <h1 class="brand-title">LiveTicker</h1>
+          <p class="brand-sub">Server-Sent Events Demo</p>
+        </div>
+      </div>
+
+      <div class="header-meta">
+        <div class="status-pill" id="statusPill">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">Connecting…</span>
+        </div>
+        <div class="clock" id="clock">--:--:--</div>
+        <button id="alertsBtn" class="icon-btn" title="View Alerts" aria-label="View alerts">
+          <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+          </svg>
+        </button>
+
+        <!-- Hamburger Menu -->
+        <div class="hamburger-container">
+          <button id="hamburgerBtn" class="icon-btn" title="Menu" aria-label="Open menu">
+            <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="M4 6h16" />
+              <path d="M4 12h16" />
+              <path d="M4 18h16" />
+            </svg>
+          </button>
+          
+          <div class="hamburger-menu" id="hamburgerMenu">
+            <button id="menuAuthBtn" class="menu-item">👤 Login / Register</button>
+            <button id="menuPortfolioBtn" class="menu-item">💼 Portfolio</button>
+            <hr class="menu-divider" />
+            
+            <div class="menu-group">
+              <span class="menu-label">🌍 <span id="menuLangText" data-i18n="menuLanguage">Language (EN)</span></span>
+              <button id="menuLangBtn" class="menu-action">EN/TR</button>
+            </div>
+            
+            <hr class="menu-divider" />
+            <div class="menu-group">
+              <span class="menu-label" data-i18n="menuTheme">🎨 Theme</span>
+              <div class="theme-dropdown menu-theme-options" id="themeDropdown">
+                <button class="theme-option" data-theme="dark">🌑 Dark</button>
+                <button class="theme-option" data-theme="light">☀️ Light</button>
+                <button class="theme-option" data-theme="ocean">🌊 Ocean</button>
+                <button class="theme-option" data-theme="sunset">🌅 Sunset</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── CONTROLS ── -->
+  <section class="controls-bar">
+    <div class="controls-inner">
+      <!-- Search -->
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input
+          id="searchInput"
+          type="text"
+          placeholder="Search symbol or company…"
+          aria-label="Search symbol or company"
+          data-i18n="searchPlaceholder"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs-group" role="tablist">
+        <button class="tab-btn active" data-tab="all" data-i18n="tabAll">All</button>
+        <button class="tab-btn" data-tab="watchlist" data-i18n="tabWatchlist">⭐ Watchlist</button>
+        <button class="tab-btn" data-tab="gainers" data-i18n="tabGainers">Gainers</button>
+        <button class="tab-btn" data-tab="losers" data-i18n="tabLosers">Losers</button>
+        <button class="tab-btn" data-tab="bist">BIST</button>
+        <button class="tab-btn" data-tab="crypto">Crypto</button>
+        <button class="tab-btn" data-tab="forex">Forex</button>
+      </div>
+
+      <!-- Sort controls -->
+      <div class="sort-group" role="group" aria-label="Sort by">
+        <button id="sortSymbol" class="sort-btn active" data-col="symbol" data-i18n="colSymbol">
+          Symbol <span class="sort-arrow">↕</span>
+        </button>
+        <button id="sortPrice" class="sort-btn" data-col="price" data-i18n="colPrice">
+          Price <span class="sort-arrow">↕</span>
+        </button>
+        <button id="sortChange" class="sort-btn" data-col="changePct" data-i18n="colChangePct">
+          Change % <span class="sort-arrow">↕</span>
+        </button>
+        <button id="sortVolume" class="sort-btn" data-col="volume" data-i18n="colVolume">
+          Volume <span class="sort-arrow">↕</span>
+        </button>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-strip">
+        <div class="stat-item">
+          <span class="stat-label" data-i18n="statGainers">Gainers</span>
+          <span class="stat-value gain" id="statGainers">—</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label" data-i18n="statLosers">Losers</span>
+          <span class="stat-value loss" id="statLosers">—</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label" data-i18n="statUpdates">Updates</span>
+          <span class="stat-value" id="statUpdates">0</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── TABLE ── -->
+  <main class="table-container">
+    <table id="tickerTable" aria-label="Live stock prices">
+      <thead>
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col" style="width:40px;"></th>
+          <th scope="col" style="width:40px;"></th>
+          <th scope="col" data-i18n="colSymbol">Symbol</th>
+          <th scope="col" data-i18n="colCompany">Company</th>
+          <th scope="col" data-i18n="colSector">Sector</th>
+          <th scope="col" data-i18n="colPrice">Price (USD)</th>
+          <th scope="col" data-i18n="colChange">Change</th>
+          <th scope="col" data-i18n="colChangePct">Change %</th>
+          <th scope="col" data-i18n="colVolume">Volume</th>
+          <th scope="col" data-i18n="colTrend">Trend</th>
+        </tr>
+      </thead>
+      <tbody id="tickerBody">
+        <!-- rows injected by JS -->
+      </tbody>
+    </table>
+
+    <div class="empty-state" id="emptyState" hidden>
+      <span class="empty-icon">🔍</span>
+      <p data-i18n="emptySearch">No stocks match your search.</p>
+    </div>
+  </main>
+
+  <!-- ── CHART MODAL ── -->
+  <div class="chart-modal" id="chartModal">
+    <div class="chart-modal-content">
+      <div class="chart-header">
+        <h3 id="chartTitle">Symbol</h3>
+        <div class="tf-controls">
+          <button class="tf-btn active" data-tf="1m">1m</button>
+          <button class="tf-btn" data-tf="5m">5m</button>
+          <button class="tf-btn" data-tf="15m">15m</button>
+          <button class="tf-btn" data-tf="1H">1H</button>
+          <button class="tf-btn" data-tf="4H">4H</button>
+          <button class="tf-btn" data-tf="1D">1D</button>
+        </div>
+        <button id="closeChart" class="close-btn" aria-label="Close chart">&times;</button>
+      </div>
+      <div id="chart" class="chart-surface"></div>
+    </div>
+  </div>
+
+  <!-- ── ALERT FORM MODAL ── -->
+  <div class="chart-modal" id="alertModal">
+    <div class="chart-modal-content" style="max-width:400px;">
+      <div class="chart-header">
+        <h3>Set Alert for <span id="alertSymbol"></span></h3>
+        <button id="closeAlertModal" class="close-btn" aria-label="Close alert form">&times;</button>
+      </div>
+      <form id="alertForm">
+        <div class="form-group" style="margin-bottom:12px;">
+          <label for="alertDirection" style="display:block; margin-bottom:8px; color:var(--text-secondary);">When price goes</label>
+          <select id="alertDirection" style="width:100%; padding:12px; background:var(--bg-elevated); color:inherit; border:1px solid var(--border); border-radius:8px;">
+            <option value="above">Above</option>
+            <option value="below">Below</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:16px;">
+          <label for="alertPrice" style="display:block; margin-bottom:8px; color:var(--text-secondary);">Target Price ($)</label>
+          <input type="number" step="0.01" id="alertPrice" required style="width:100%; padding:12px; background:var(--bg-elevated); color:inherit; border:1px solid var(--border); border-radius:8px;"/>
+        </div>
+        <button type="submit" style="width:100%; padding:12px; background:var(--accent); color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600;">Set Alert</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── ALERTS LIST MODAL ── -->
+  <div class="chart-modal" id="alertsListModal">
+    <div class="chart-modal-content" style="max-width:500px;">
+      <div class="chart-header">
+        <h3>Active Alerts</h3>
+        <button id="closeAlertsList" class="close-btn" aria-label="Close alerts list">&times;</button>
+      </div>
+      <div id="alertsContainer" style="max-height:400px; overflow-y:auto; color:var(--text-secondary);">
+        <!-- Active alerts injected here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ── IN-APP AUTH MODAL ── -->
+  <div class="auth-modal" id="authModal">
+    <div class="auth-modal-inner">
+
+      <!-- LEFT PANEL: Branding -->
+      <div class="auth-left-panel">
+        <div class="auth-left-brand">
+          <span class="auth-left-logo">📈</span>
+          <span class="auth-left-name">LiveTicker</span>
+        </div>
+        <div class="auth-left-body">
+          <h2 class="auth-left-tagline">Real-time markets,<br><span class="auth-left-accent">at your fingertips.</span></h2>
+          <p class="auth-left-desc">Track stocks and crypto with live price updates, sparkline charts, and powerful filters.</p>
+          <div class="auth-left-stats">
+            <div class="auth-stat-item">
+              <span class="auth-stat-val">24+</span>
+              <span class="auth-stat-lbl">Assets tracked</span>
+            </div>
+            <div class="auth-stat-item">
+              <span class="auth-stat-val accent-green">2s</span>
+              <span class="auth-stat-lbl">Update interval</span>
+            </div>
+            <div class="auth-stat-item">
+              <span class="auth-stat-val">Live</span>
+              <span class="auth-stat-lbl">Price feeds</span>
+            </div>
+          </div>
+        </div>
+        <p class="auth-left-footer">© 2026 LiveTicker. Simulated data for demo purposes.</p>
+      </div>
+
+      <!-- RIGHT PANEL: Form -->
+      <div class="auth-right-panel">
+        <button id="closeAuthModal" class="auth-close-btn" aria-label="Close authentication modal">&times;</button>
+
+        <div class="auth-right-top">
+          <div class="auth-right-icon" id="authRightIcon">
+            <!-- Login icon -->
+            <svg id="authIconLogin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            <!-- Register icon -->
+            <svg id="authIconRegister" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          </div>
+          <h2 id="authModalTitle">Welcome back</h2>
+          <p id="authModalSubtitle">Log in to your account</p>
+          <p class="auth-gate-msg" id="modalFormError"></p>
+        </div>
+
+        <div class="auth-form-card">
+          <!-- Google (decorative) -->
+          <button type="button" class="auth-google-btn" id="authGoogleBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" style="flex-shrink:0"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            Continue with Google
+          </button>
+          <div class="auth-or-divider"><span>OR</span></div>
+
+          <form id="modalAuthForm">
+            <div class="auth-field">
+              <label for="modalEmail">Email</label>
+              <div class="auth-input-wrap">
+                <svg class="auth-inp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,12 2,6"/></svg>
+                <input type="email" id="modalEmail" required autocomplete="email" placeholder="you@example.com"/>
+              </div>
+            </div>
+
+            <div class="auth-field">
+              <div class="auth-label-row">
+                <label for="modalPassword">Password</label>
+                <a href="#" class="auth-forgot" id="authForgotLink">Forgot password?</a>
+              </div>
+              <div class="auth-input-wrap">
+                <svg class="auth-inp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="modalPassword" required autocomplete="current-password" placeholder="••••••••"/>
+              </div>
+            </div>
+
+            <div class="auth-field" id="confirmPasswordGroup" style="display:none">
+              <label for="modalConfirmPassword">Confirm Password</label>
+              <div class="auth-input-wrap">
+                <svg class="auth-inp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <input type="password" id="modalConfirmPassword" placeholder="••••••••"/>
+              </div>
+            </div>
+
+            <button type="submit" class="auth-submit-btn" id="modalSubmitBtn">Log in</button>
+          </form>
+        </div>
+
+        <p class="auth-switch-hint" id="authModalHint">
+          Don't have an account? <a href="#" id="authSwitchLink">Create one</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FOOTER ── -->
+  <footer class="site-footer">
+    <p>
+      📈 <strong data-i18n="footerSimulated">Prices are simulated via a random-walk algorithm</strong> — not financial advice.<br/>
+      Built with Node.js, Express, Server-Sent Events, and Lightweight Charts.
+    </p>
+  </footer>
+
+  <script src="app.js?v=7"></script>
+</body>
+</html>

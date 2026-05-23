@@ -1,0 +1,15 @@
+sequenceDiagram
+    participant U as User
+    participant W as Web UI
+    participant A as API
+    participant D as SQLite
+
+    U->>W: Submit email and password
+    W->>A: POST /api/auth/login
+    A->>D: SELECT user by email
+    D-->>A: password hash
+    A->>A: bcrypt compare
+    A->>D: INSERT refresh token hash
+    A-->>W: access_token + refresh_token
+    W->>A: GET /api/me with Bearer token
+    A-->>W: current user profile

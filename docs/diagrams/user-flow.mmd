@@ -1,0 +1,10 @@
+flowchart LR
+    A[Open dashboard] --> B[Watch live ticker]
+    B --> C{Needs personal features?}
+    C -->|No| D[Search, filter, sort]
+    C -->|Yes| E[Login or register]
+    E --> F[Add favorites]
+    F --> G[Create price alert]
+    G --> H[Receive browser notification]
+    D --> I[Open chart modal]
+    F --> I

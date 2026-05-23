@@ -1,0 +1,38 @@
+erDiagram
+    users ||--o{ favorites : owns
+    users ||--o{ alerts : owns
+    users ||--o{ refresh_tokens : has
+
+    users {
+        integer id PK
+        text email UK
+        text password_hash
+        text name
+        datetime created_at
+        datetime updated_at
+    }
+
+    favorites {
+        integer id PK
+        integer user_id FK
+        text symbol
+        datetime created_at
+    }
+
+    alerts {
+        integer id PK
+        integer user_id FK
+        text symbol
+        real target_price
+        text direction
+        datetime created_at
+    }
+
+    refresh_tokens {
+        integer id PK
+        integer user_id FK
+        text token_hash UK
+        datetime expires_at
+        datetime revoked_at
+        datetime created_at
+    }

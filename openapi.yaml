@@ -1,0 +1,427 @@
+openapi: 3.1.0
+info:
+  title: SSE Live Ticker API
+  version: 1.0.0
+  description: REST and SSE API for the BMU1208 SSE Live Ticker final project.
+servers:
+  - url: http://localhost:3001
+security:
+  - bearerAuth: []
+paths:
+  /api/health:
+    get:
+      summary: Health check
+      security: []
+      responses:
+        "200":
+          description: Service status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                  time:
+                    type: string
+                    format: date-time
+                  liveMarketData:
+                    type: boolean
+                  lastProviderSync:
+                    type:
+                      - string
+                      - "null"
+                    format: date-time
+                  lastProviderError:
+                    type:
+                      - string
+                      - "null"
+  /events:
+    get:
+      summary: Live ticker Server-Sent Events stream
+      security: []
+      responses:
+        "200":
+          description: SSE stream where each event payload is an array of stocks.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+  /api/stocks:
+    get:
+      summary: List ticker instruments
+      security: []
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [stock, bist, crypto, forex]
+        - in: query
+          name: q
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Market data snapshot
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Stock"
+  /api/stocks/{symbol}:
+    get:
+      summary: Get one ticker instrument
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/Symbol"
+      responses:
+        "200":
+          description: Stock detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Stock"
+        "404":
+          $ref: "#/components/responses/Error"
+  /api/auth/register:
+    post:
+      summary: Register a user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthRegisterRequest"
+      responses:
+        "201":
+          description: Created user and token pair
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+  /api/auth/login:
+    post:
+      summary: Login a user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthLoginRequest"
+      responses:
+        "200":
+          description: Token pair
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+  /api/auth/refresh:
+    post:
+      summary: Rotate refresh token and issue a new access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        "200":
+          description: New token pair
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/Error"
+  /api/auth/logout:
+    post:
+      summary: Revoke the provided refresh token
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        "200":
+          description: Logout accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Success"
+        "401":
+          $ref: "#/components/responses/Error"
+  /api/me:
+    get:
+      summary: Current authenticated user
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Error"
+  /api/favorites:
+    get:
+      summary: List current user's watchlist symbols
+      responses:
+        "200":
+          description: Watchlist symbols
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        "401":
+          $ref: "#/components/responses/Error"
+  /api/favorites/{symbol}:
+    post:
+      summary: Add symbol to watchlist
+      parameters:
+        - $ref: "#/components/parameters/Symbol"
+      responses:
+        "201":
+          description: Added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SymbolSuccess"
+        "404":
+          $ref: "#/components/responses/Error"
+    delete:
+      summary: Remove symbol from watchlist
+      parameters:
+        - $ref: "#/components/parameters/Symbol"
+      responses:
+        "200":
+          description: Removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SymbolSuccess"
+  /api/alerts:
+    get:
+      summary: List price alerts
+      responses:
+        "200":
+          description: Alert list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Alert"
+    post:
+      summary: Create a price alert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAlertRequest"
+      responses:
+        "201":
+          description: Created alert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertCreateResponse"
+        "400":
+          $ref: "#/components/responses/Error"
+  /api/alerts/{id}:
+    delete:
+      summary: Delete a price alert
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Success"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Symbol:
+      in: path
+      name: symbol
+      required: true
+      schema:
+        type: string
+      example: AAPL
+  responses:
+    Error:
+      description: Error response
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    Stock:
+      type: object
+      required: [symbol, name, price, changePct, type, source]
+      properties:
+        symbol:
+          type: string
+        name:
+          type: string
+        sector:
+          type: string
+        price:
+          type: number
+        change:
+          type: number
+        changePct:
+          type: number
+        direction:
+          type: string
+          enum: [up, down, neutral]
+        volume:
+          type: integer
+        type:
+          type: string
+          enum: [stock, bist, crypto, forex]
+        source:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+    User:
+      type: object
+      required: [id, email]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+    AuthRegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        name:
+          type: string
+    AuthLoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    AuthResponse:
+      type: object
+      required: [access_token, refresh_token, user]
+      properties:
+        token:
+          type: string
+          description: Backward-compatible alias of access_token.
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: string
+          example: 15m
+        refresh_token_expires_at:
+          type: string
+          format: date-time
+        user:
+          $ref: "#/components/schemas/User"
+    CreateAlertRequest:
+      type: object
+      required: [symbol, target_price, direction]
+      properties:
+        symbol:
+          type: string
+        target_price:
+          type: number
+          minimum: 0
+        direction:
+          type: string
+          enum: [above, below]
+    Alert:
+      type: object
+      properties:
+        id:
+          type: integer
+        symbol:
+          type: string
+        target_price:
+          type: number
+        direction:
+          type: string
+          enum: [above, below]
+        created_at:
+          type: string
+    AlertCreateResponse:
+      allOf:
+        - $ref: "#/components/schemas/Success"
+        - $ref: "#/components/schemas/Alert"
+    Success:
+      type: object
+      properties:
+        success:
+          type: boolean
+    SymbolSuccess:
+      type: object
+      properties:
+        success:
+          type: boolean
+        symbol:
+          type: string
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
