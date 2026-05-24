@@ -1,6 +1,10 @@
 # Railway Deployment Guide
 
-This project is ready for Railway deployment with `railway.json`.
+This project is deployed on Railway with `railway.json`.
+
+Production URL: `https://sse-live-ticker-production.up.railway.app`
+
+Health check: `https://sse-live-ticker-production.up.railway.app/api/health`
 
 ## Required Variables
 
@@ -27,7 +31,7 @@ SQLite needs persistent storage in production. In Railway:
 2. Mount it at `/data`.
 3. Set `DB_PATH=/data/ticker.db`.
 
-Without a volume, user accounts, watchlists, alerts, and refresh tokens may be lost after redeploys.
+The app creates the SQLite directory automatically on startup. Without a mounted volume, user accounts, watchlists, alerts, and refresh tokens may still be lost after redeploys or restarts.
 
 ## Deployment Steps
 
@@ -41,7 +45,7 @@ railway up
 
 After deployment:
 
-1. Open the public Railway URL.
+1. Open `https://sse-live-ticker-production.up.railway.app`.
 2. Check `/api/health`.
 3. Register a demo user.
 4. Add a watchlist symbol.

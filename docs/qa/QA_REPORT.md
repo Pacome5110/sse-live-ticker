@@ -2,6 +2,10 @@
 
 Generated on 2026-05-24 for `http://localhost:3001`.
 
+Production deployment: `https://sse-live-ticker-production.up.railway.app`
+
+Production health check: `https://sse-live-ticker-production.up.railway.app/api/health` returned `status: ok`.
+
 ## Automated Tests
 
 Command:

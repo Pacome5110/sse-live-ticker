@@ -8,7 +8,8 @@
 **Kurum:** Bitlis Eren Üniversitesi, Mühendislik-Mimarlık Fakültesi, Bilgisayar Mühendisliği  
 **Ders Yürütücüsü:** Dr. Öğr. Üyesi Davut ARI  
 **Son Güncelleme:** 23.05.2026  
-**Durum:** Geliştirme tamamlandı, Railway deploy adımı için hazır
+**Durum:** Geliştirme ve Railway deploy tamamlandı  
+**Canlı URL:** https://sse-live-ticker-production.up.railway.app
 
 ---
 
@@ -57,7 +58,7 @@ SSE Canlı Borsa Ticker; hisse senedi, BIST sembolleri, kripto para ve döviz pa
 
 Proje, gerçek zamanlı veri akışı için native Server-Sent Events yaklaşımını kullanır. Bu tercih, fiyatların sunucudan tarayıcıya tek yönlü aktığı finans ticker senaryosu için WebSocket'e göre daha sade bir mimari sağlar. Backend tarafında Node.js ve Express, frontend tarafında vanilla JavaScript, kalıcı veri için SQLite kullanılmıştır. Varsayılan demo modunda fiyatlar güvenilir sunum için random-walk simülasyonu ile üretilir; isteğe bağlı canlı sağlayıcı modu CoinGecko, Frankfurter ve Yahoo quote endpoint'lerini dener.
 
-Ortaya çıkan MVP; kimlik doğrulama, watchlist, fiyat alarmı, SSE stream, REST API, OpenAPI dokümantasyonu, test paketi, güvenlik başlıkları, rate limit ve deploy dokümantasyonu içerir. `npm test` ile 7 otomatik API testi geçmektedir. Lighthouse sonuçları: Performance 70, Accessibility 90, Best Practices 88, SEO 100. Ekran görüntüleri, mimari diyagramlar ve QA çıktıları `docs/` klasöründe rapora eklenmeye hazırdır.
+Ortaya çıkan MVP; kimlik doğrulama, watchlist, fiyat alarmı, SSE stream, REST API, OpenAPI dokümantasyonu, test paketi, güvenlik başlıkları, rate limit ve Railway deploy çıktısı içerir. `npm test` ile 7 otomatik API testi geçmektedir. Lighthouse sonuçları: Performance 70, Accessibility 90, Best Practices 88, SEO 100. Canlı uygulama `https://sse-live-ticker-production.up.railway.app` adresinde, health check ise `/api/health` endpoint'i üzerinden doğrulanmıştır.
 
 ---
 
@@ -228,7 +229,7 @@ BIST ve global piyasa sembollerini ders, analiz veya demo amacıyla takip eden b
 | Auth | bcryptjs + jsonwebtoken | Şifre hash ve token üretimi |
 | Test | Vitest + Supertest | API otomasyon testleri |
 | QA | Lighthouse, statik a11y script | Kalite ölçümü |
-| Deployment | Railway config | Production hazırlığı |
+| Deployment | Railway | Production ortamında canlı yayın |
 
 ### 7.1 Reddedilen Teknoloji Kararları
 
@@ -478,7 +479,7 @@ Performans skorunun en büyük iyileştirme alanları harici grafik kütüphanes
 
 ### 13.1 Yapılanlar
 
-Proje, rapordaki temel MVP hedeflerini karşılar: SSE stream, canlı dashboard, auth, watchlist, alert, grafik, test, OpenAPI, QA, ekran görüntüleri ve deploy hazırlığı tamamlanmıştır. Kod çalışır durumdadır ve `http://localhost:3001` üzerinden test edilmiştir.
+Proje, rapordaki temel MVP hedeflerini karşılar: SSE stream, canlı dashboard, auth, watchlist, alert, grafik, test, OpenAPI, QA, ekran görüntüleri ve Railway deploy tamamlanmıştır. Kod lokal ortamda `http://localhost:3001`, canlı ortamda `https://sse-live-ticker-production.up.railway.app` üzerinden test edilmiştir.
 
 ### 13.2 Zorluklar
 
@@ -491,7 +492,7 @@ Proje, rapordaki temel MVP hedeflerini karşılar: SSE stream, canlı dashboard,
 
 ### 13.3 Gelecek Çalışmalar
 
-1. Railway üzerinde persistent volume ile production deploy.
+1. Railway üzerinde persistent volume veya PostgreSQL ile uzun süreli production veri kalıcılığı.
 2. PostgreSQL migration.
 3. Push API + Service Worker ile tarayıcı kapalıyken alarm.
 4. RSI/MACD gibi teknik analiz göstergeleri.
