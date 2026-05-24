@@ -7,6 +7,7 @@ const db = require('./db');
 const { fetchLiveMarketUpdates } = require('./marketProviders');
 
 const PORT = Number(process.env.PORT || 3001);
+const HOST = process.env.HOST || '0.0.0.0';
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
 const ACCESS_TOKEN_TTL = process.env.ACCESS_TOKEN_TTL || '15m';
 const REFRESH_TOKEN_DAYS = Number(process.env.REFRESH_TOKEN_DAYS || 7);
@@ -548,8 +549,8 @@ app.delete('/api/alerts/:id', authenticateToken, (req, res) => {
 
 function startServer() {
   startPriceFeed();
-  return app.listen(PORT, () => {
-    console.log(`SSE Live Exchange Ticker running at http://localhost:${PORT}`);
+  return app.listen(PORT, HOST, () => {
+    console.log(`SSE Live Exchange Ticker running on ${HOST}:${PORT}`);
   });
 }
 
