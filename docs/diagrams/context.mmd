@@ -1,9 +1,13 @@
 flowchart LR
     User(("Market watcher"))
-    System["SSE Live Ticker"]
     Browser["Web browser"]
-    Providers["Planned data providers<br/>CoinGecko / Frankfurter / Yahoo proxy"]
+    System["SSE Live Ticker\nNode.js + Express web application"]
+    Google["Google Identity Services\noptional OAuth login"]
+    Providers["Market data providers\nCoinGecko / Frankfurter / Yahoo quote proxy"]
+    Railway["Railway production hosting"]
 
-    User --> Browser
-    Browser -->|HTTP + EventSource| System
-    System -. future provider adapters .-> Providers
+    User -->|views dashboard, manages watchlist, alerts, portfolio| Browser
+    Browser -->|HTTPS, REST API, EventSource SSE| System
+    System -->|verifies Google ID token when enabled| Google
+    System -. optional live provider mode .-> Providers
+    Railway -->|runs and exposes| System

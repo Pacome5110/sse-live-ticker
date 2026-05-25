@@ -4,12 +4,19 @@ sequenceDiagram
     participant A as API
     participant D as SQLite
 
-    U->>W: Submit email and password
-    W->>A: POST /api/auth/login
-    A->>D: SELECT user by email
-    D-->>A: password hash
-    A->>A: bcrypt compare
+    U->>W: Submit email/password or Google credential
+    alt Email/password login
+      W->>A: POST /api/auth/login
+      A->>D: SELECT user by email
+      D-->>A: password hash
+      A->>A: bcrypt.compare(password, hash)
+    else Google login
+      W->>A: POST /api/auth/google
+      A->>A: Verify Google ID token audience, issuer, expiry
+      A->>D: Find or create linked user
+    end
     A->>D: INSERT refresh token hash
-    A-->>W: access_token + refresh_token
-    W->>A: GET /api/me with Bearer token
-    A-->>W: current user profile
+    A-->>W: access_token + refresh_token + user
+    W->>W: Store tokens in localStorage
+    W->>A: Authenticated REST calls with Bearer token
+    A-->>W: Favorites, alerts, portfolio, profile

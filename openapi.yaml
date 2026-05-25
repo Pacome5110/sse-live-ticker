@@ -39,6 +39,24 @@ paths:
                     type:
                       - string
                       - "null"
+  /api/config:
+    get:
+      summary: Public frontend configuration
+      security: []
+      responses:
+        "200":
+          description: Client feature flags
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  googleLoginEnabled:
+                    type: boolean
+                  googleClientId:
+                    type:
+                      - string
+                      - "null"
   /events:
     get:
       summary: Live ticker Server-Sent Events stream
@@ -126,6 +144,69 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+  /api/auth/google:
+    post:
+      summary: Login or register using a Google Identity Services credential
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthGoogleRequest"
+      responses:
+        "200":
+          description: Token pair
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+        "503":
+          $ref: "#/components/responses/Error"
+  /api/auth/forgot-password:
+    post:
+      summary: Create a password reset token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordRequest"
+      responses:
+        "200":
+          description: Reset token response for the classroom/demo flow
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForgotPasswordResponse"
+        "400":
+          $ref: "#/components/responses/Error"
+  /api/auth/reset-password:
+    post:
+      summary: Set a new password with a reset token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordRequest"
+      responses:
+        "200":
+          description: Password updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Success"
         "400":
           $ref: "#/components/responses/Error"
         "401":
@@ -228,6 +309,56 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SymbolSuccess"
+  /api/portfolio:
+    get:
+      summary: List portfolio positions with live valuation
+      responses:
+        "200":
+          description: Portfolio payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioResponse"
+        "401":
+          $ref: "#/components/responses/Error"
+    post:
+      summary: Create or update a portfolio position
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PortfolioUpsertRequest"
+      responses:
+        "201":
+          description: Saved position
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  position:
+                    $ref: "#/components/schemas/PortfolioPosition"
+        "400":
+          $ref: "#/components/responses/Error"
+        "401":
+          $ref: "#/components/responses/Error"
+  /api/portfolio/{symbol}:
+    delete:
+      summary: Delete a portfolio position
+      parameters:
+        - $ref: "#/components/parameters/Symbol"
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SymbolSuccess"
+        "401":
+          $ref: "#/components/responses/Error"
   /api/alerts:
     get:
       summary: List price alerts
@@ -359,6 +490,48 @@ components:
           format: email
         password:
           type: string
+    AuthGoogleRequest:
+      type: object
+      required: [credential]
+      properties:
+        credential:
+          type: string
+          description: Google Identity Services ID token credential.
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+    ForgotPasswordResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        reset_token:
+          type:
+            - string
+            - "null"
+          description: Returned directly for the classroom/demo flow.
+        expires_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        delivery:
+          type: string
+    ResetPasswordRequest:
+      type: object
+      required: [token, password]
+      properties:
+        token:
+          type: string
+        password:
+          type: string
+          minLength: 8
     AuthResponse:
       type: object
       required: [access_token, refresh_token, user]
@@ -378,6 +551,65 @@ components:
           format: date-time
         user:
           $ref: "#/components/schemas/User"
+    PortfolioUpsertRequest:
+      type: object
+      required: [symbol, quantity, average_price]
+      properties:
+        symbol:
+          type: string
+        quantity:
+          type: number
+          minimum: 0
+        average_price:
+          type: number
+          minimum: 0
+    PortfolioPosition:
+      type: object
+      properties:
+        id:
+          type: integer
+        symbol:
+          type: string
+        name:
+          type: string
+        type:
+          type:
+            - string
+            - "null"
+        quantity:
+          type: number
+        average_price:
+          type: number
+        current_price:
+          type: number
+        market_value:
+          type: number
+        cost_basis:
+          type: number
+        pnl:
+          type: number
+        pnl_pct:
+          type: number
+        updated_at:
+          type: string
+    PortfolioResponse:
+      type: object
+      properties:
+        positions:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortfolioPosition"
+        summary:
+          type: object
+          properties:
+            market_value:
+              type: number
+            cost_basis:
+              type: number
+            pnl:
+              type: number
+            pnl_pct:
+              type: number
     CreateAlertRequest:
       type: object
       required: [symbol, target_price, direction]

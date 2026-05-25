@@ -25,6 +25,8 @@ pnpm-debug.log*
 coverage/
 dist/
 build/
+.docx-build/
+*.docx.zip
 .nyc_output/
 .vite/
 .cache/
@@ -43,5 +45,6 @@ docs/demo/*.webm
 .DS_Store
 Thumbs.db
 desktop.ini
+~$*.docx
 .vscode/
 .idea/

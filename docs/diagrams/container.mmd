@@ -1,11 +1,26 @@
 flowchart TD
     User(("User"))
-    Web["Static frontend<br/>HTML / CSS / JS"]
-    API["Node.js API<br/>Express + SSE"]
-    DB[("SQLite<br/>users / favorites / alerts / refresh_tokens")]
+
+    subgraph Browser["Browser"]
+      Web["Static Frontend\nHTML / CSS / JS\nDashboard, auth, portfolio, alerts, charts"]
+      Charts["Lightweight Charts\ncandlestick modal"]
+      Web --> Charts
+    end
+
+    subgraph Railway["Railway Service"]
+      API["Express API\nREST + security middleware + rate limits"]
+      SSE["SSE Price Stream\nGET /events"]
+      Feed["Market Feed Engine\nsimulated random walk + optional providers"]
+      Auth["Auth Module\nbcrypt, JWT, refresh tokens, Google ID token verification"]
+      DB[("SQLite Database\nusers, favorites, alerts, portfolio,\nrefresh/reset tokens")]
+      API --> Auth
+      API --> DB
+      SSE --> Feed
+      Feed --> API
+    end
 
     User --> Web
-    Web -->|GET /events| API
     Web -->|REST /api/*| API
-    API --> DB
-    API -->|SSE price snapshots| Web
+    Web -->|EventSource /events| SSE
+    API -->|JSON responses| Web
+    SSE -->|price snapshots| Web

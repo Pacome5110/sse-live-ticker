@@ -44,7 +44,7 @@
 | Frontend | HTML, CSS, vanilla JavaScript, EventSource API |
 | Grafik | Lightweight Charts |
 | Veritabanı | SQLite, better-sqlite3 |
-| Auth | bcrypt, JWT access token, rotating refresh token |
+| Auth | bcrypt, JWT access token, rotating refresh token, Google Sign-In, password reset |
 | Test | Vitest, Supertest, statik accessibility check, Lighthouse |
 | API dokümantasyonu | `openapi.yaml` |
 | Demo kullanıcı | Uygulama üzerinden yeni kullanıcı kaydı yapılabilir |
@@ -58,7 +58,7 @@ SSE Canlı Borsa Ticker; hisse senedi, BIST sembolleri, kripto para ve döviz pa
 
 Proje, gerçek zamanlı veri akışı için native Server-Sent Events yaklaşımını kullanır. Bu tercih, fiyatların sunucudan tarayıcıya tek yönlü aktığı finans ticker senaryosu için WebSocket'e göre daha sade bir mimari sağlar. Backend tarafında Node.js ve Express, frontend tarafında vanilla JavaScript, kalıcı veri için SQLite kullanılmıştır. Varsayılan demo modunda fiyatlar güvenilir sunum için random-walk simülasyonu ile üretilir; isteğe bağlı canlı sağlayıcı modu CoinGecko, Frankfurter ve Yahoo quote endpoint'lerini dener.
 
-Ortaya çıkan MVP; kimlik doğrulama, watchlist, fiyat alarmı, SSE stream, REST API, OpenAPI dokümantasyonu, test paketi, güvenlik başlıkları, rate limit ve Railway deploy çıktısı içerir. `npm test` ile 7 otomatik API testi geçmektedir. Lighthouse sonuçları: Performance 70, Accessibility 90, Best Practices 88, SEO 100. Canlı uygulama `https://sse-live-ticker-production.up.railway.app` adresinde, health check ise `/api/health` endpoint'i üzerinden doğrulanmıştır.
+Ortaya çıkan MVP; kimlik doğrulama, Google giriş entegrasyonu, parola sıfırlama akışı, watchlist, portföy, fiyat alarmı, SSE stream, REST API, OpenAPI dokümantasyonu, test paketi, güvenlik başlıkları, rate limit ve Railway deploy çıktısı içerir. `npm test` ile 10 otomatik API testi geçmektedir. Lighthouse sonuçları: Performance 70, Accessibility 90, Best Practices 88, SEO 100. Canlı uygulama `https://sse-live-ticker-production.up.railway.app` adresinde, health check ise `/api/health` endpoint'i üzerinden doğrulanmıştır.
 
 ---
 
@@ -70,7 +70,7 @@ Bireysel yatırımcılar genellikle hisse, kripto ve döviz verilerini ayrı uyg
 
 ### 3.2 Çözüm
 
-Bu proje, tek sayfalık ve hızlı açılan bir canlı ticker paneli sunar. Kullanıcı uygulamayı açtığında tablo anında dolar; SSE bağlantısı açık kaldığı sürece fiyatlar güncellenir. Kişisel özellikler için kayıt/giriş yapılır ve watchlist ile alert verileri SQLite üzerinde saklanır.
+Bu proje, tek sayfalık ve hızlı açılan bir canlı ticker paneli sunar. Kullanıcı uygulamayı açtığında tablo anında dolar; SSE bağlantısı açık kaldığı sürece fiyatlar güncellenir. Kişisel özellikler için kayıt/giriş yapılır ve watchlist, portfolio, alert, refresh token ve reset token verileri SQLite üzerinde saklanır.
 
 ### 3.3 Farklılaşma
 
@@ -82,7 +82,7 @@ Bu proje, tek sayfalık ve hızlı açılan bir canlı ticker paneli sunar. Kull
 
 ### 3.4 Kapsam Dışı
 
-V1 kapsamında gerçek al-sat işlemi, portföy kâr/zarar muhasebesi, broker entegrasyonu, push notification servis worker, canlı BIST lisanslı veri ve gelişmiş teknik analiz sinyalleri yoktur.
+V1 kapsamında gerçek al-sat işlemi, broker entegrasyonu, push notification servis worker, canlı BIST lisanslı veri ve gelişmiş teknik analiz sinyalleri yoktur. Portföy modülü pozisyon maliyeti ve anlık kâr/zarar özeti verir; broker hesabına bağlanmaz.
 
 ---
 
@@ -143,7 +143,10 @@ BIST ve global piyasa sembollerini ders, analiz veya demo amacıyla takip eden b
 | Sembol detayı | Tamamlandı | `GET /api/stocks/{symbol}` |
 | Login/register | Tamamlandı | `/api/auth/register`, `/api/auth/login` |
 | Refresh token | Tamamlandı | `/api/auth/refresh` |
+| Google login | Tamamlandı | `/api/auth/google`, `GOOGLE_CLIENT_ID` ile aktif |
+| Password reset | Tamamlandı | `/api/auth/forgot-password`, `/api/auth/reset-password` |
 | Watchlist | Tamamlandı | `/api/favorites` |
+| Portfolio | Tamamlandı | `/api/portfolio` |
 | Fiyat alarmı | Tamamlandı | `/api/alerts` |
 | Grafik modalı | Tamamlandı | Lightweight Charts |
 | Mobil görünüm | Tamamlandı | `docs/screenshots/06-mobile.png` |
@@ -163,15 +166,18 @@ BIST ve global piyasa sembollerini ders, analiz veya demo amacıyla takip eden b
 | FR-08 | Kullanıcı fiyat alarmı kurmak ister. | Sembol, hedef fiyat ve yön doğrulanıp saklanır. | Must |
 | FR-09 | Kullanıcı grafiği açmak ister. | Satıra tıklanınca grafik modalı açılır. | Should |
 | FR-10 | Kullanıcı mobilde takip etmek ister. | 390px genişlikte ana akış kullanılabilir kalır. | Should |
+| FR-11 | Kullanıcı portföy pozisyonu takip etmek ister. | Sembol, miktar ve ortalama fiyat kaydedilir; P/L özeti hesaplanır. | Should |
+| FR-12 | Kullanıcı Google ile giriş yapmak ister. | Google ID token doğrulanır ve uygulama token çifti üretilir. | Could |
+| FR-13 | Kullanıcı şifresini sıfırlamak ister. | Reset token ile yeni şifre belirlenir ve eski refresh token'lar revoke edilir. | Should |
 
 ### 5.4 Non-Functional Requirements
 
 | Kategori | Hedef | Sonuç |
 | --- | --- | --- |
 | API cevap süresi | Lokal ortamda hızlı REST cevapları | Sağlandı |
-| Güvenlik | Bcrypt, JWT, rate limit, güvenlik başlıkları | Sağlandı |
+| Güvenlik | Bcrypt, JWT, Google token doğrulama, reset token hash, rate limit, güvenlik başlıkları | Sağlandı |
 | Erişilebilirlik | Form label, aria-label, statik kontrol | `npm run a11y` geçti |
-| Test | API happy path ve hata durumları | 7 test geçti |
+| Test | API happy path ve hata durumları | 10 test geçti |
 | Dokümantasyon | OpenAPI, ADR, README, deploy dokümanı | Sağlandı |
 
 ---
@@ -195,7 +201,7 @@ BIST ve global piyasa sembollerini ders, analiz veya demo amacıyla takip eden b
 | Güçlü Yönler | Zayıf Yönler |
 | --- | --- |
 | Basit SSE mimarisi | Varsayılan mod simülasyon verisi |
-| Lokal SQLite ile hızlı demo | Portföy muhasebesi yok |
+| Lokal SQLite ile hızlı demo | Production kalıcılığı için Railway volume veya PostgreSQL önerilir |
 | Test ve OpenAPI mevcut | Lighthouse performansı iyileştirilmeli |
 | Mobil ve tema desteği | Production için persistent volume gerekir |
 
@@ -225,8 +231,8 @@ BIST ve global piyasa sembollerini ders, analiz veya demo amacıyla takip eden b
 | Realtime | Server-Sent Events | Tek yönlü fiyat stream'i |
 | Frontend | HTML/CSS/JavaScript | Dashboard, modal, filtre, tema |
 | Grafik | Lightweight Charts | Candlestick grafik modalı |
-| DB | SQLite + better-sqlite3 | User, favorites, alerts, refresh tokens |
-| Auth | bcryptjs + jsonwebtoken | Şifre hash ve token üretimi |
+| DB | SQLite + better-sqlite3 | Users, favorites, alerts, portfolio, refresh/reset tokens |
+| Auth | bcryptjs + jsonwebtoken + Google Identity Services | Şifre hash, reset token, Google ID token doğrulama ve token üretimi |
 | Test | Vitest + Supertest | API otomasyon testleri |
 | QA | Lighthouse, statik a11y script | Kalite ölçümü |
 | Deployment | Railway | Production ortamında canlı yayın |
@@ -250,58 +256,47 @@ BIST ve global piyasa sembollerini ders, analiz veya demo amacıyla takip eden b
 
 ## 8. Sistem Mimarisi
 
+Mimari, C4 modelinin Context ve Container seviyeleri ile dokümante edilmiştir. Uygulama tek Railway servisi olarak çalışır: Express hem statik frontend dosyalarını servis eder hem de REST API ve SSE fiyat akışını sağlar. SQLite dosyası kullanıcı verileri, oturum token'ları, favoriler, alarmlar, portföy pozisyonları ve parola sıfırlama token'ları için kullanılır.
+
 ### 8.1 C4 Context
 
-Kaynak: `docs/diagrams/context.mmd`
+Kaynaklar: `docs/diagrams/context.mmd`, `docs/diagrams/context.png`
 
-```mermaid
-flowchart LR
-    User(("Market watcher"))
-    System["SSE Live Ticker"]
-    Browser["Web browser"]
-    Providers["Planned data providers<br/>CoinGecko / Frankfurter / Yahoo proxy"]
-    User --> Browser
-    Browser -->|HTTP + EventSource| System
-    System -. future provider adapters .-> Providers
-```
+![Şekil 1: Sistem Context Diyagramı (C4 Level 1)](docs/diagrams/context.png)
+
+Kullanıcı web tarayıcısı üzerinden SSE Live Ticker sistemini kullanır. Sistem, Railway üzerinde çalışan Node.js/Express uygulamasıdır. Google Identity Services sadece `GOOGLE_CLIENT_ID` tanımlandığında Google ile giriş için kullanılır. CoinGecko, Frankfurter ve Yahoo quote proxy entegrasyonları opsiyonel canlı piyasa modu için adapter olarak ayrılmıştır; varsayılan MVP simülasyon verisi ile güvenilir demo sağlar.
 
 ### 8.2 Container Diyagramı
 
-Kaynak: `docs/diagrams/container.mmd`
+Kaynaklar: `docs/diagrams/container.mmd`, `docs/diagrams/container.png`
 
-```mermaid
-flowchart TD
-    User(("User"))
-    Web["Static frontend<br/>HTML / CSS / JS"]
-    API["Node.js API<br/>Express + SSE"]
-    DB[("SQLite<br/>users / favorites / alerts / refresh_tokens")]
-    User --> Web
-    Web -->|GET /events| API
-    Web -->|REST /api/*| API
-    API --> DB
-    API -->|SSE price snapshots| Web
-```
+![Şekil 2: Container Diyagramı (C4 Level 2)](docs/diagrams/container.png)
+
+Frontend, `public/` klasöründeki HTML/CSS/JavaScript dosyalarından oluşur. Express API; auth, favorites, alerts, portfolio, stock listesi ve config endpointlerini sağlar. SSE price stream `/events` endpointi ile tarayıcıya fiyat snapshot'ları gönderir. Market feed engine varsayılan olarak random-walk simülasyonu üretir; `LIVE_MARKET_DATA=true` olduğunda dış provider adapter'ları denenir. SQLite veritabanı `better-sqlite3` ile prepared statement kullanılarak erişilir.
 
 ### 8.3 Login Sequence
 
-Kaynak: `docs/diagrams/login-sequence.mmd`
+Kaynaklar: `docs/diagrams/login-sequence.mmd`, `docs/diagrams/login-sequence.png`
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant W as Web UI
-    participant A as API
-    participant D as SQLite
-    U->>W: Submit email and password
-    W->>A: POST /api/auth/login
-    A->>D: SELECT user by email
-    D-->>A: password hash
-    A->>A: bcrypt compare
-    A->>D: INSERT refresh token hash
-    A-->>W: access_token + refresh_token
-    W->>A: GET /api/me with Bearer token
-    A-->>W: current user profile
-```
+![Şekil 3: Login Akışı Sequence Diyagramı](docs/diagrams/login-sequence.png)
+
+E-posta/şifre girişinde API kullanıcıyı e-posta ile bulur, bcrypt ile hash karşılaştırması yapar ve refresh token hash'ini SQLite'a yazar. Google girişinde frontend Google Identity Services credential alır; backend ID token audience, issuer, expiry ve email verification alanlarını doğruladıktan sonra kullanıcıyı bulur veya oluşturur. Her iki akışta da frontend access token ve refresh token alır.
+
+### 8.4 Deployment Topolojisi
+
+Kaynaklar: `docs/diagrams/deployment.mmd`, `docs/diagrams/deployment.png`
+
+![Şekil 4: Production Deployment Topolojisi](docs/diagrams/deployment.png)
+
+Production ortamı GitHub bağlantılı Railway servisi ile çalışır. Railway Nixpacks, Node 22 ortamını kurar ve `npm start` komutu ile `server.js` dosyasını başlatır. Express `0.0.0.0:$PORT` üzerinde dinler. Public domain: `https://sse-live-ticker-production.up.railway.app`. Kritik ortam değişkenleri `JWT_SECRET`, `DB_PATH` ve Google girişi için `GOOGLE_CLIENT_ID` değerleridir.
+
+### 8.5 Mimari Karar Kayıtları (ADR)
+
+| ADR No | Karar | Durum | Tarih |
+| --- | --- | --- | --- |
+| ADR-001 | Canlı fiyat güncellemeleri için Server-Sent Events kullanımı | Accepted | 2026-05 |
+| ADR-002 | MVP persistence için SQLite kullanımı | Accepted | 2026-05 |
+| ADR-003 | Build karmaşıklığını azaltmak için vanilla frontend kullanımı | Accepted | 2026-05 |
 
 ---
 
@@ -309,40 +304,46 @@ sequenceDiagram
 
 ### 9.1 ER Diyagram
 
-Kaynak: `docs/diagrams/erd.mmd`
+Kaynaklar: `docs/diagrams/erd.mmd`, `docs/diagrams/erd.png`
 
-```mermaid
-erDiagram
-    users ||--o{ favorites : owns
-    users ||--o{ alerts : owns
-    users ||--o{ refresh_tokens : has
-```
+![Şekil 5: Veritabanı ER Diyagramı](docs/diagrams/erd.png)
+
+Tüm kullanıcıya özel kayıtlar `users.id` üzerinden ilişkilendirilir. Refresh token ve reset token değerleri ham olarak saklanmaz; SHA-256 hash karşılıkları tutulur. `favorites` ve `portfolio_positions` tablolarında `(user_id, symbol)` unique kısıtı aynı sembolün tekrar eklenmesini engeller.
 
 ### 9.2 Tablolar
 
 | Tablo | Amaç | Önemli Alanlar |
 | --- | --- | --- |
-| `users` | Kullanıcı hesapları | `id`, `email`, `password_hash`, `name` |
+| `users` | Kullanıcı hesapları | `id`, `email`, `password_hash`, `name`, `google_sub`, `auth_provider` |
 | `favorites` | Watchlist sembolleri | `user_id`, `symbol`, unique `(user_id, symbol)` |
 | `alerts` | Fiyat alarmları | `symbol`, `target_price`, `direction` |
 | `refresh_tokens` | Oturum yenileme | `token_hash`, `expires_at`, `revoked_at` |
+| `password_reset_tokens` | Parola sıfırlama | `token_hash`, `expires_at`, `used_at` |
+| `portfolio_positions` | Portföy pozisyonları | `symbol`, `quantity`, `average_price`, unique `(user_id, symbol)` |
 
 ### 9.3 API Endpointleri
 
 | Method | URL | Açıklama | Auth |
 | --- | --- | --- | --- |
 | GET | `/api/health` | Servis durumu | Public |
+| GET | `/api/config` | Frontend config ve Google login durumu | Public |
 | GET | `/events` | SSE fiyat stream'i | Public |
 | GET | `/api/stocks` | Sembol listesi | Public |
 | GET | `/api/stocks/:symbol` | Sembol detayı | Public |
 | POST | `/api/auth/register` | Kullanıcı kaydı | Public |
 | POST | `/api/auth/login` | Giriş | Public |
+| POST | `/api/auth/google` | Google Identity credential ile giriş/kayıt | Public |
+| POST | `/api/auth/forgot-password` | Reset token üretimi | Public |
+| POST | `/api/auth/reset-password` | Reset token ile yeni şifre belirleme | Public |
 | POST | `/api/auth/refresh` | Refresh token rotasyonu | Public |
 | POST | `/api/auth/logout` | Refresh token revoke | JWT |
 | GET | `/api/me` | Mevcut kullanıcı | JWT |
 | GET | `/api/favorites` | Watchlist listeleme | JWT |
 | POST | `/api/favorites/:symbol` | Watchlist ekleme | JWT |
 | DELETE | `/api/favorites/:symbol` | Watchlist silme | JWT |
+| GET | `/api/portfolio` | Portföy pozisyonları ve P/L özeti | JWT |
+| POST | `/api/portfolio` | Portföy pozisyonu ekleme/güncelleme | JWT |
+| DELETE | `/api/portfolio/:symbol` | Portföy pozisyonu silme | JWT |
 | GET | `/api/alerts` | Alarm listeleme | JWT |
 | POST | `/api/alerts` | Alarm oluşturma | JWT |
 | DELETE | `/api/alerts/:id` | Alarm silme | JWT |
@@ -359,9 +360,11 @@ OpenAPI dosyası: `openapi.yaml`
 /
 ├── Dashboard
 ├── Auth modal
+├── Reset password modal
 ├── Chart modal
 ├── Alert modal
 ├── Alerts list modal
+├── Portfolio modal
 └── /auth.html legacy auth page
 ```
 
@@ -404,6 +407,8 @@ Form kontrollerine label/aria-label eklendi. Icon-only kapatma butonlarına aria
 | JWT access token | Aktif |
 | Rotating refresh token | Aktif |
 | Refresh token hash saklama | Aktif |
+| Password reset token hash saklama | Aktif |
+| Google ID token doğrulama | `GOOGLE_CLIENT_ID` tanımlanınca aktif |
 | Rate limit | Auth 5/dk, API 100/dk varsayılan |
 | SQL injection koruması | Prepared statement |
 | Security headers | CSP, frame deny, nosniff, referrer policy |
@@ -416,7 +421,7 @@ Form kontrollerine label/aria-label eklendi. Icon-only kapatma butonlarına aria
 npm test
 ```
 
-Sonuç: 1 test dosyası, 7 test, tamamı geçti.
+Sonuç: 1 test dosyası, 10 test, tamamı geçti.
 
 Test kapsamı:
 
@@ -425,6 +430,9 @@ Test kapsamı:
 - Refresh token reuse reddi
 - Favorites CRUD
 - Alerts CRUD ve validation
+- Portfolio CRUD ve P/L özeti
+- Google login credential doğrulama akışı
+- Password reset token üretimi ve şifre güncelleme
 - Auth gerektiren endpointlerin korunması
 
 ### 11.3 QA
@@ -479,16 +487,17 @@ Performans skorunun en büyük iyileştirme alanları harici grafik kütüphanes
 
 ### 13.1 Yapılanlar
 
-Proje, rapordaki temel MVP hedeflerini karşılar: SSE stream, canlı dashboard, auth, watchlist, alert, grafik, test, OpenAPI, QA, ekran görüntüleri ve Railway deploy tamamlanmıştır. Kod lokal ortamda `http://localhost:3001`, canlı ortamda `https://sse-live-ticker-production.up.railway.app` üzerinden test edilmiştir.
+Proje, rapordaki temel MVP hedeflerini karşılar: SSE stream, canlı dashboard, auth, Google login altyapısı, password reset, watchlist, portfolio, alert, grafik, test, OpenAPI, QA, ekran görüntüleri ve Railway deploy tamamlanmıştır. Kod lokal ortamda `http://localhost:3001`, canlı ortamda `https://sse-live-ticker-production.up.railway.app` üzerinden test edilmiştir.
 
 ### 13.2 Zorluklar
 
 | Zorluk | Çözüm |
 | --- | --- |
 | SSE bağlantısını test edilebilir tutmak | `startServer` ve `app` export ayrıldı |
-| Refresh token güvenliği | Token düz metin yerine hash olarak saklandı |
+| Refresh/reset token güvenliği | Token düz metin yerine hash olarak saklandı |
 | Screenshot otomasyonu | Chrome DevTools Protocol ile beklemeli capture script yazıldı |
 | Harici veri güvenilirliği | Optional provider mode + simülasyon fallback tasarlandı |
+| Google login kurulumu | Kod entegrasyonu tamamlandı; production için `GOOGLE_CLIENT_ID` Railway variable olarak beklenir |
 
 ### 13.3 Gelecek Çalışmalar
 
@@ -496,7 +505,7 @@ Proje, rapordaki temel MVP hedeflerini karşılar: SSE stream, canlı dashboard,
 2. PostgreSQL migration.
 3. Push API + Service Worker ile tarayıcı kapalıyken alarm.
 4. RSI/MACD gibi teknik analiz göstergeleri.
-5. Portfolio maliyet ve kâr/zarar takibi.
+5. Portfolio geçmiş hareketleri ve dışa aktarım.
 6. Lighthouse performans skorunu 80+ seviyesine çıkarma.
 
 ### 13.4 AI Araçları

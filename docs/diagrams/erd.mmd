@@ -2,12 +2,16 @@ erDiagram
     users ||--o{ favorites : owns
     users ||--o{ alerts : owns
     users ||--o{ refresh_tokens : has
+    users ||--o{ password_reset_tokens : requests
+    users ||--o{ portfolio_positions : tracks
 
     users {
         integer id PK
         text email UK
         text password_hash
         text name
+        text google_sub UK
+        text auth_provider
         datetime created_at
         datetime updated_at
     }
@@ -35,4 +39,23 @@ erDiagram
         datetime expires_at
         datetime revoked_at
         datetime created_at
+    }
+
+    password_reset_tokens {
+        integer id PK
+        integer user_id FK
+        text token_hash UK
+        datetime expires_at
+        datetime used_at
+        datetime created_at
+    }
+
+    portfolio_positions {
+        integer id PK
+        integer user_id FK
+        text symbol
+        real quantity
+        real average_price
+        datetime created_at
+        datetime updated_at
     }

@@ -15,6 +15,7 @@ const BCRYPT_COST = Number(process.env.BCRYPT_COST || 12);
 const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 60_000);
 const AUTH_RATE_LIMIT_MAX = Number(process.env.AUTH_RATE_LIMIT_MAX || 5);
 const API_RATE_LIMIT_MAX = Number(process.env.API_RATE_LIMIT_MAX || 100);
+const PASSWORD_RESET_TTL_MINUTES = Number(process.env.PASSWORD_RESET_TTL_MINUTES || 30);
 const USE_LIVE_MARKET_DATA = process.env.LIVE_MARKET_DATA === 'true';
 const LIVE_MARKET_INTERVAL_MS = Number(process.env.LIVE_MARKET_INTERVAL_MS || 30_000);
 
@@ -269,6 +270,163 @@ function issueTokens(user) {
   };
 }
 
+function getGoogleClientId() {
+  return String(process.env.GOOGLE_CLIENT_ID || '').trim();
+}
+
+async function verifyGoogleCredential(credential) {
+  const clientId = getGoogleClientId();
+  const idToken = String(credential || '').trim();
+
+  if (!clientId) return { status: 503, error: 'Google login is not configured' };
+  if (!idToken) return { status: 400, error: 'Google credential is required' };
+
+  const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`, {
+    headers: { Accept: 'application/json' },
+  });
+
+  if (!response.ok) return { status: 401, error: 'Invalid Google credential' };
+
+  const profile = await response.json();
+  const issuer = String(profile.iss || '');
+  const expiresAt = Number(profile.exp || 0) * 1000;
+  const email = normalizeEmail(profile.email);
+
+  if (profile.aud !== clientId) return { status: 401, error: 'Invalid Google audience' };
+  if (!['accounts.google.com', 'https://accounts.google.com'].includes(issuer)) {
+    return { status: 401, error: 'Invalid Google issuer' };
+  }
+  if (!expiresAt || expiresAt <= Date.now()) return { status: 401, error: 'Expired Google credential' };
+  if (String(profile.email_verified) !== 'true') return { status: 401, error: 'Google email is not verified' };
+  if (!profile.sub || !isValidEmail(email)) return { status: 401, error: 'Google profile is incomplete' };
+
+  return {
+    profile: {
+      sub: String(profile.sub),
+      email,
+      name: String(profile.name || '').trim() || null,
+    },
+  };
+}
+
+function linkedProvider(existingProvider, provider) {
+  const current = String(existingProvider || 'password');
+  return current.split(',').includes(provider) ? current : `${current},${provider}`;
+}
+
+async function findOrCreateGoogleUser(profile) {
+  const bySub = db.prepare(
+    'SELECT id, email, name, google_sub, auth_provider FROM users WHERE google_sub = ?'
+  ).get(profile.sub);
+
+  if (bySub) return bySub;
+
+  const byEmail = db.prepare(
+    'SELECT id, email, name, google_sub, auth_provider FROM users WHERE email = ?'
+  ).get(profile.email);
+
+  if (byEmail) {
+    const nextName = byEmail.name || profile.name;
+    const nextProvider = linkedProvider(byEmail.auth_provider, 'google');
+    db.prepare(
+      `UPDATE users
+       SET google_sub = ?, name = ?, auth_provider = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`
+    ).run(profile.sub, nextName, nextProvider, byEmail.id);
+    return { ...byEmail, google_sub: profile.sub, name: nextName, auth_provider: nextProvider };
+  }
+
+  const unusablePassword = crypto.randomBytes(32).toString('hex');
+  const passwordHash = await bcrypt.hash(unusablePassword, BCRYPT_COST);
+  const result = db.prepare(
+    `INSERT INTO users (email, password_hash, name, google_sub, auth_provider)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(profile.email, passwordHash, profile.name, profile.sub, 'google');
+
+  return {
+    id: result.lastInsertRowid,
+    email: profile.email,
+    name: profile.name,
+    google_sub: profile.sub,
+    auth_provider: 'google',
+  };
+}
+
+function createPasswordResetToken(userId) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MINUTES * 60 * 1000).toISOString();
+
+  db.prepare(
+    'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)'
+  ).run(userId, hashToken(token), expiresAt);
+
+  return { token, expiresAt };
+}
+
+function validatePortfolioBody(body) {
+  const symbol = normalizeSymbol(body.symbol);
+  const quantity = Number(body.quantity);
+  const averagePrice = Number(body.average_price ?? body.averagePrice);
+
+  if (!stockSymbols.has(symbol)) return { error: 'Unknown symbol' };
+  if (!Number.isFinite(quantity) || quantity <= 0) return { error: 'quantity must be a positive number' };
+  if (!Number.isFinite(averagePrice) || averagePrice <= 0) {
+    return { error: 'average_price must be a positive number' };
+  }
+
+  return { value: { symbol, quantity, average_price: averagePrice } };
+}
+
+function roundMoney(value) {
+  return Number(value.toFixed(2));
+}
+
+function portfolioPositionView(row) {
+  const stock = getStock(row.symbol);
+  const currentPrice = stock ? stock.price : row.average_price;
+  const marketValue = row.quantity * currentPrice;
+  const costBasis = row.quantity * row.average_price;
+  const pnl = marketValue - costBasis;
+
+  return {
+    id: row.id,
+    symbol: row.symbol,
+    name: stock ? stock.name : row.symbol,
+    type: stock ? stock.type : null,
+    quantity: row.quantity,
+    average_price: row.average_price,
+    current_price: currentPrice,
+    market_value: roundMoney(marketValue),
+    cost_basis: roundMoney(costBasis),
+    pnl: roundMoney(pnl),
+    pnl_pct: costBasis > 0 ? Number(((pnl / costBasis) * 100).toFixed(2)) : 0,
+    updated_at: row.updated_at,
+  };
+}
+
+function getPortfolioPayload(userId) {
+  const rows = db.prepare(
+    `SELECT id, symbol, quantity, average_price, updated_at
+     FROM portfolio_positions
+     WHERE user_id = ?
+     ORDER BY updated_at DESC`
+  ).all(userId);
+  const positions = rows.map(portfolioPositionView);
+  const summary = positions.reduce((acc, position) => {
+    acc.market_value += position.market_value;
+    acc.cost_basis += position.cost_basis;
+    acc.pnl += position.pnl;
+    return acc;
+  }, { market_value: 0, cost_basis: 0, pnl: 0, pnl_pct: 0 });
+
+  summary.market_value = roundMoney(summary.market_value);
+  summary.cost_basis = roundMoney(summary.cost_basis);
+  summary.pnl = roundMoney(summary.pnl);
+  summary.pnl_pct = summary.cost_basis > 0 ? Number(((summary.pnl / summary.cost_basis) * 100).toFixed(2)) : 0;
+
+  return { positions, summary };
+}
+
 function validateAlertBody(body) {
   const symbol = normalizeSymbol(body.symbol);
   const targetPrice = Number(body.target_price);
@@ -312,7 +470,7 @@ function securityHeaders(_req, res, next) {
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://*.googleusercontent.com https://ssl.gstatic.com https://www.gstatic.com; connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-src https://accounts.google.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
   );
   next();
 }
@@ -371,6 +529,14 @@ app.get('/api/health', (_req, res) => {
     liveMarketData: USE_LIVE_MARKET_DATA,
     lastProviderSync,
     lastProviderError,
+  });
+});
+
+app.get('/api/config', (_req, res) => {
+  const googleClientId = getGoogleClientId();
+  res.json({
+    googleLoginEnabled: Boolean(googleClientId),
+    googleClientId: googleClientId || null,
   });
 });
 
@@ -461,6 +627,73 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
   return res.json(issueTokens(user));
 });
 
+app.post('/api/auth/google', authLimiter, async (req, res) => {
+  try {
+    const verified = await verifyGoogleCredential(req.body.credential);
+    if (verified.error) return jsonError(res, verified.status, verified.error);
+
+    const user = await findOrCreateGoogleUser(verified.profile);
+    return res.json(issueTokens(user));
+  } catch (_err) {
+    return jsonError(res, 502, 'Google login verification failed');
+  }
+});
+
+app.post('/api/auth/forgot-password', authLimiter, (req, res) => {
+  const email = normalizeEmail(req.body.email);
+  if (!isValidEmail(email)) return jsonError(res, 400, 'Valid email is required');
+
+  const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  let reset = null;
+
+  if (user) {
+    db.prepare(
+      'UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE user_id = ? AND used_at IS NULL'
+    ).run(user.id);
+    reset = createPasswordResetToken(user.id);
+  }
+
+  return res.json({
+    success: true,
+    message: 'If an account exists, a password reset token has been generated.',
+    reset_token: reset ? reset.token : null,
+    expires_at: reset ? reset.expiresAt : null,
+    delivery: reset ? 'demo-response' : 'not-created',
+  });
+});
+
+app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
+  const resetToken = String(req.body.token || '').trim();
+  const password = req.body.password;
+
+  if (resetToken.length < 32) return jsonError(res, 400, 'Reset token is required');
+  if (!isStrongEnoughPassword(password)) return jsonError(res, 400, 'Password must be at least 8 characters');
+
+  const tokenRow = db.prepare(
+    `SELECT prt.id, prt.user_id, prt.expires_at, prt.used_at, u.auth_provider
+     FROM password_reset_tokens prt
+     JOIN users u ON u.id = prt.user_id
+     WHERE prt.token_hash = ?`
+  ).get(hashToken(resetToken));
+
+  if (!tokenRow || tokenRow.used_at || Date.parse(tokenRow.expires_at) <= Date.now()) {
+    return jsonError(res, 401, 'Invalid or expired reset token');
+  }
+
+  const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
+  const nextProvider = linkedProvider(tokenRow.auth_provider, 'password');
+
+  db.transaction(() => {
+    db.prepare(
+      'UPDATE users SET password_hash = ?, auth_provider = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    ).run(passwordHash, nextProvider, tokenRow.user_id);
+    db.prepare('UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = ?').run(tokenRow.id);
+    db.prepare('UPDATE refresh_tokens SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = ?').run(tokenRow.user_id);
+  })();
+
+  return res.json({ success: true });
+});
+
 app.post('/api/auth/refresh', authLimiter, (req, res) => {
   const refreshToken = String(req.body.refresh_token || '').trim();
   if (!refreshToken) return jsonError(res, 400, 'refresh_token is required');
@@ -517,6 +750,39 @@ app.post('/api/favorites/:symbol', authenticateToken, (req, res) => {
 app.delete('/api/favorites/:symbol', authenticateToken, (req, res) => {
   const symbol = normalizeSymbol(req.params.symbol);
   db.prepare('DELETE FROM favorites WHERE user_id = ? AND symbol = ?').run(req.user.id, symbol);
+  res.json({ success: true, symbol });
+});
+
+app.get('/api/portfolio', authenticateToken, (req, res) => {
+  res.json(getPortfolioPayload(req.user.id));
+});
+
+app.post('/api/portfolio', authenticateToken, (req, res) => {
+  const result = validatePortfolioBody(req.body);
+  if (result.error) return jsonError(res, 400, result.error);
+
+  const position = result.value;
+  db.prepare(
+    `INSERT INTO portfolio_positions (user_id, symbol, quantity, average_price)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(user_id, symbol) DO UPDATE SET
+       quantity = excluded.quantity,
+       average_price = excluded.average_price,
+       updated_at = CURRENT_TIMESTAMP`
+  ).run(req.user.id, position.symbol, position.quantity, position.average_price);
+
+  const row = db.prepare(
+    `SELECT id, symbol, quantity, average_price, updated_at
+     FROM portfolio_positions
+     WHERE user_id = ? AND symbol = ?`
+  ).get(req.user.id, position.symbol);
+
+  return res.status(201).json({ success: true, position: portfolioPositionView(row) });
+});
+
+app.delete('/api/portfolio/:symbol', authenticateToken, (req, res) => {
+  const symbol = normalizeSymbol(req.params.symbol);
+  db.prepare('DELETE FROM portfolio_positions WHERE user_id = ? AND symbol = ?').run(req.user.id, symbol);
   res.json({ success: true, symbol });
 });
 

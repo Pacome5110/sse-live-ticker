@@ -8,11 +8,11 @@ Live demo: https://sse-live-ticker-production.up.railway.app
 
 - Live price stream over native `EventSource`
 - REST fallback and detail endpoints for market data
-- Email/password auth with bcrypt password hashing
+- Email/password auth with bcrypt password hashing, password reset tokens, and optional Google Sign-In
 - JWT access tokens plus rotating refresh tokens
-- SQLite persistence for users, favorites, alerts, and refresh sessions
+- SQLite persistence for users, favorites, alerts, portfolio positions, and refresh sessions
 - Optional live provider mode for CoinGecko, Frankfurter, and Yahoo quote data
-- Watchlist, price alerts, search, sorting, tabs, sparkline rows, themes, and EN/TR UI text
+- Watchlist, portfolio, price alerts, search, sorting, tabs, sparkline rows, themes, and EN/TR UI text
 - Basic security headers, CORS controls, input validation, and rate limiting
 - Vitest + Supertest API test coverage
 - OpenAPI 3.1 specification in `openapi.yaml`
@@ -49,6 +49,8 @@ npm test
 
 Copy `.env.example` to `.env` and change at least `JWT_SECRET` before production use.
 
+Google Sign-In is optional. To enable it, create a Google OAuth Web Client ID, add your app origin to the authorized JavaScript origins, and set `GOOGLE_CLIENT_ID` in `.env` or Railway Variables. Without this variable, the app keeps email/password login active and shows a setup message on the Google button.
+
 ## API
 
 The API contract is documented in `openapi.yaml`. Main endpoints:
@@ -59,12 +61,18 @@ The API contract is documented in `openapi.yaml`. Main endpoints:
 - `GET /api/stocks/{symbol}`
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `POST /api/auth/google`
+- `POST /api/auth/forgot-password`
+- `POST /api/auth/reset-password`
 - `POST /api/auth/refresh`
 - `POST /api/auth/logout`
 - `GET /api/me`
 - `GET /api/favorites`
 - `POST /api/favorites/{symbol}`
 - `DELETE /api/favorites/{symbol}`
+- `GET /api/portfolio`
+- `POST /api/portfolio`
+- `DELETE /api/portfolio/{symbol}`
 - `GET /api/alerts`
 - `POST /api/alerts`
 - `DELETE /api/alerts/{id}`

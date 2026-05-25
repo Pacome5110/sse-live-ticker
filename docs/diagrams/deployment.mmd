@@ -1,0 +1,19 @@
+flowchart LR
+    Dev["Developer\nGit push"]
+    GitHub["GitHub Repository\nPacome5110/sse-live-ticker"]
+    RailwayBuild["Railway Nixpacks Build\nNode 22 + npm install"]
+    Service["Railway Web Service\nnpm start -> node server.js"]
+    Domain["Public HTTPS Domain\nsse-live-ticker-production.up.railway.app"]
+    DB[("SQLite file\nDB_PATH / ticker.db")]
+    Env["Railway Variables\nJWT_SECRET, GOOGLE_CLIENT_ID, DB_PATH"]
+    Google["Google Identity Services"]
+    Browser["User Browser"]
+
+    Dev --> GitHub
+    GitHub --> RailwayBuild
+    RailwayBuild --> Service
+    Env --> Service
+    Service --> DB
+    Domain --> Service
+    Browser -->|HTTPS + EventSource| Domain
+    Service -->|verify ID token when enabled| Google

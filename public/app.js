@@ -210,7 +210,8 @@ document.addEventListener('click', (e) => {
 // Menu item events
 document.getElementById('menuPortfolioBtn').addEventListener('click', () => {
   if (!authToken) openAuthModal('Sign in to view Portfolio 💼');
-  else alert('Portfolio feature coming soon!');
+  else openPortfolioModal();
+  if (hamburgerMenu) hamburgerMenu.classList.remove('open');
 });
 
 document.getElementById('menuLangBtn').addEventListener('click', () => {
@@ -231,12 +232,25 @@ const authModalHint         = document.getElementById('authModalHint');
 const authSwitchLink        = document.getElementById('authSwitchLink');
 const authForgotLink        = document.getElementById('authForgotLink');
 const authGoogleBtn         = document.getElementById('authGoogleBtn');
+const googleButtonContainer = document.getElementById('googleButtonContainer');
 
 // New UI Elements
 const authModalTitle    = document.getElementById('authModalTitle');
 const authModalSubtitle = document.getElementById('authModalSubtitle');
 const authIconLogin     = document.getElementById('authIconLogin');
 const authIconRegister  = document.getElementById('authIconRegister');
+
+const resetPasswordModal      = document.getElementById('resetPasswordModal');
+const closeResetPasswordModal = document.getElementById('closeResetPasswordModal');
+const forgotPasswordForm      = document.getElementById('forgotPasswordForm');
+const resetPasswordForm       = document.getElementById('resetPasswordForm');
+const resetEmail              = document.getElementById('resetEmail');
+const resetToken              = document.getElementById('resetToken');
+const newPassword             = document.getElementById('newPassword');
+const confirmNewPassword      = document.getElementById('confirmNewPassword');
+const forgotPasswordSubmitBtn = document.getElementById('forgotPasswordSubmitBtn');
+const resetPasswordSubmitBtn  = document.getElementById('resetPasswordSubmitBtn');
+const resetPasswordMessage    = document.getElementById('resetPasswordMessage');
 
 let authMode = 'login'; // 'login' | 'register'
 
@@ -300,9 +314,90 @@ authSwitchLink.addEventListener('click', (e) => {
   setAuthMode(authMode === 'login' ? 'register' : 'login');
 });
 
+let googleLoginFallbackMessage = 'Google login is loading. Please try again in a moment.';
+
 authGoogleBtn.addEventListener('click', () => {
-  alert('Google OAuth integration coming soon! Please use email/password for the demo.');
+  modalFormError.textContent = googleLoginFallbackMessage;
 });
+
+function handleAuthSuccess(data, fallbackEmail) {
+  authToken = data.access_token || data.token;
+  refreshToken = data.refresh_token;
+  localStorage.setItem('token', authToken);
+  localStorage.setItem('refreshToken', refreshToken);
+  localStorage.setItem('userEmail', data.user?.email || fallbackEmail);
+  closeModal();
+  updateUserArea();
+  Promise.all([loadFavorites(), loadAlerts()]).then(() => applyFilterAndSort());
+}
+
+async function handleGoogleCredential(response) {
+  modalFormError.textContent = 'Signing in with Google...';
+  try {
+    const res = await fetch('/api/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential: response.credential })
+    });
+    const data = await res.json();
+    if (res.ok && data.token) {
+      handleAuthSuccess(data, data.user?.email);
+    } else {
+      modalFormError.textContent = data.error || 'Google sign-in failed.';
+    }
+  } catch (err) {
+    modalFormError.textContent = 'Google sign-in could not reach the server.';
+  }
+}
+
+async function initGoogleLogin() {
+  if (!authGoogleBtn || !googleButtonContainer) return;
+
+  try {
+    const configRes = await fetch('/api/config');
+    const config = configRes.ok ? await configRes.json() : {};
+
+    if (!config.googleLoginEnabled || !config.googleClientId) {
+      authGoogleBtn.hidden = false;
+      googleLoginFallbackMessage = 'Google login needs GOOGLE_CLIENT_ID in the server environment.';
+      return;
+    }
+
+    const renderGoogleButton = () => {
+      if (!window.google?.accounts?.id) return false;
+      window.google.accounts.id.initialize({
+        client_id: config.googleClientId,
+        callback: handleGoogleCredential
+      });
+      googleButtonContainer.innerHTML = '';
+      window.google.accounts.id.renderButton(googleButtonContainer, {
+        theme: 'outline',
+        size: 'large',
+        type: 'standard',
+        text: 'continue_with',
+        width: Math.min(340, googleButtonContainer.clientWidth || 320)
+      });
+      authGoogleBtn.hidden = true;
+      return true;
+    };
+
+    if (!renderGoogleButton()) {
+      let tries = 0;
+      const timer = setInterval(() => {
+        tries += 1;
+        if (renderGoogleButton()) {
+          clearInterval(timer);
+        } else if (tries >= 20) {
+          googleLoginFallbackMessage = 'Google sign-in script could not load. Check the app origin and network.';
+          clearInterval(timer);
+        }
+      }, 250);
+    }
+  } catch (err) {
+    authGoogleBtn.hidden = false;
+    googleLoginFallbackMessage = 'Google login configuration could not be loaded.';
+  }
+}
 
 modalAuthForm.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -330,15 +425,7 @@ modalAuthForm.addEventListener('submit', async (e) => {
     });
     const data = await res.json();
     if (res.ok && data.token) {
-      authToken = data.access_token || data.token;
-      refreshToken = data.refresh_token;
-      localStorage.setItem('token', authToken);
-      localStorage.setItem('refreshToken', refreshToken);
-      localStorage.setItem('userEmail', email);
-      closeModal();
-      updateUserArea();
-      // load user data now that we're authed
-      Promise.all([loadFavorites(), loadAlerts()]).then(() => applyFilterAndSort());
+      handleAuthSuccess(data, email);
     } else {
       modalFormError.textContent = data.error || data.message || 'Something went wrong.';
     }
@@ -351,6 +438,109 @@ modalAuthForm.addEventListener('submit', async (e) => {
 });
 
 // ─── State ────────────────────────────────────────────────────────────────────
+function setResetMessage(text, type) {
+  resetPasswordMessage.textContent = text || '';
+  resetPasswordMessage.className = `modal-message ${type || ''}`.trim();
+}
+
+function openResetPasswordModal() {
+  closeModal();
+  resetEmail.value = modalEmail.value.trim() || '';
+  resetToken.value = '';
+  newPassword.value = '';
+  confirmNewPassword.value = '';
+  resetPasswordForm.hidden = true;
+  setResetMessage('', '');
+  resetPasswordModal.classList.add('active');
+  resetEmail.focus();
+}
+
+function closeResetModal() {
+  resetPasswordModal.classList.remove('active');
+}
+
+authForgotLink.addEventListener('click', (e) => {
+  e.preventDefault();
+  openResetPasswordModal();
+});
+
+closeResetPasswordModal.addEventListener('click', closeResetModal);
+resetPasswordModal.addEventListener('click', (e) => {
+  if (e.target === resetPasswordModal) closeResetModal();
+});
+
+forgotPasswordForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  setResetMessage('', '');
+  forgotPasswordSubmitBtn.disabled = true;
+  forgotPasswordSubmitBtn.textContent = 'Creating...';
+
+  try {
+    const res = await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: resetEmail.value.trim() })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setResetMessage(data.error || 'Could not create a reset token.', 'error');
+      return;
+    }
+
+    if (data.reset_token) {
+      resetToken.value = data.reset_token;
+      resetPasswordForm.hidden = false;
+      setResetMessage('Reset token created. Enter a new password below.', 'success');
+      newPassword.focus();
+    } else {
+      setResetMessage('If that email exists, a reset token was created.', 'success');
+    }
+  } catch (err) {
+    setResetMessage('Network error while creating reset token.', 'error');
+  } finally {
+    forgotPasswordSubmitBtn.disabled = false;
+    forgotPasswordSubmitBtn.textContent = 'Create Reset Token';
+  }
+});
+
+resetPasswordForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (newPassword.value !== confirmNewPassword.value) {
+    setResetMessage('Passwords do not match.', 'error');
+    return;
+  }
+
+  setResetMessage('', '');
+  resetPasswordSubmitBtn.disabled = true;
+  resetPasswordSubmitBtn.textContent = 'Updating...';
+
+  try {
+    const res = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: resetToken.value.trim(), password: newPassword.value })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setResetMessage(data.error || 'Could not reset password.', 'error');
+      return;
+    }
+
+    setResetMessage('Password updated. You can log in now.', 'success');
+    setTimeout(() => {
+      closeResetModal();
+      openAuthModal('Password updated. Log in with your new password.');
+      modalEmail.value = resetEmail.value.trim();
+      modalPassword.focus();
+    }, 700);
+  } catch (err) {
+    setResetMessage('Network error while resetting password.', 'error');
+  } finally {
+    resetPasswordSubmitBtn.disabled = false;
+    resetPasswordSubmitBtn.textContent = 'Update Password';
+  }
+});
+
 let stockData    = [];
 let filteredData = [];
 let sortCol      = 'symbol';
@@ -962,6 +1152,157 @@ alertsBtn.addEventListener('click', () => {
 closeAlertsListBtn.addEventListener('click', () => alertsListModal.classList.remove('active'));
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
+// Portfolio
+const portfolioModal        = document.getElementById('portfolioModal');
+const closePortfolioModal   = document.getElementById('closePortfolioModal');
+const portfolioForm         = document.getElementById('portfolioForm');
+const portfolioSymbol       = document.getElementById('portfolioSymbol');
+const portfolioQuantity     = document.getElementById('portfolioQuantity');
+const portfolioAveragePrice = document.getElementById('portfolioAveragePrice');
+const portfolioSubmitBtn    = document.getElementById('portfolioSubmitBtn');
+const portfolioMessage      = document.getElementById('portfolioMessage');
+const portfolioContainer    = document.getElementById('portfolioContainer');
+const portfolioTotalValue   = document.getElementById('portfolioTotalValue');
+const portfolioTotalCost    = document.getElementById('portfolioTotalCost');
+const portfolioPnl          = document.getElementById('portfolioPnl');
+
+function setPortfolioMessage(text, type) {
+  portfolioMessage.textContent = text || '';
+  portfolioMessage.className = `modal-message ${type || ''}`.trim();
+}
+
+function money(value) {
+  return `$${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function populatePortfolioSymbols() {
+  const rows = stockData.length ? stockData : filteredData;
+  portfolioSymbol.innerHTML = rows
+    .slice()
+    .sort((a, b) => a.symbol.localeCompare(b.symbol))
+    .map((stock) => `<option value="${esc(stock.symbol)}">${esc(stock.symbol)} - ${esc(stock.name)}</option>`)
+    .join('');
+  const firstStock = stockData.find((item) => item.symbol === portfolioSymbol.value);
+  if (firstStock && !portfolioAveragePrice.value) portfolioAveragePrice.value = firstStock.price;
+}
+
+function renderPortfolio(payload) {
+  const positions = payload.positions || [];
+  const summary = payload.summary || {};
+  portfolioTotalValue.textContent = money(summary.market_value);
+  portfolioTotalCost.textContent = money(summary.cost_basis);
+  const pnlClass = Number(summary.pnl || 0) >= 0 ? 'gain' : 'loss';
+  portfolioPnl.innerHTML = `<span class="${pnlClass}">${money(summary.pnl)} (${Number(summary.pnl_pct || 0).toFixed(2)}%)</span>`;
+
+  if (!positions.length) {
+    portfolioContainer.innerHTML = '<p style="padding:18px;text-align:center;color:var(--text-secondary);">No portfolio positions yet.</p>';
+    return;
+  }
+
+  portfolioContainer.innerHTML = positions.map((position) => {
+    const rowPnlClass = Number(position.pnl || 0) >= 0 ? 'gain' : 'loss';
+    return `
+      <div class="portfolio-row">
+        <div class="portfolio-symbol">
+          <strong>${esc(position.symbol)}</strong>
+          <span>${esc(position.name)}</span>
+        </div>
+        <div class="portfolio-metric"><span>Qty</span><strong>${Number(position.quantity).toLocaleString()}</strong></div>
+        <div class="portfolio-metric"><span>Avg</span><strong>${money(position.average_price)}</strong></div>
+        <div class="portfolio-metric"><span>Current</span><strong>${money(position.current_price)}</strong></div>
+        <div class="portfolio-metric"><span>P/L</span><strong class="${rowPnlClass}">${money(position.pnl)} (${Number(position.pnl_pct || 0).toFixed(2)}%)</strong></div>
+        <button class="portfolio-delete-btn" title="Delete ${esc(position.symbol)}" aria-label="Delete ${esc(position.symbol)}" onclick="deletePortfolioPosition('${esc(position.symbol)}')">&times;</button>
+      </div>
+    `;
+  }).join('');
+}
+
+async function loadPortfolio() {
+  const res = await authedFetch('/api/portfolio');
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Could not load portfolio.');
+  renderPortfolio(data);
+}
+
+async function openPortfolioModal() {
+  if (!authToken) {
+    openAuthModal('Sign in to view Portfolio');
+    return;
+  }
+
+  if (!stockData.length) {
+    try {
+      const res = await fetch('/api/stocks');
+      if (res.ok) stockData = await res.json();
+    } catch (err) {}
+  }
+
+  populatePortfolioSymbols();
+  setPortfolioMessage('', '');
+  portfolioModal.classList.add('active');
+
+  try {
+    await loadPortfolio();
+  } catch (err) {
+    setPortfolioMessage(err.message || 'Could not load portfolio.', 'error');
+  }
+}
+
+closePortfolioModal.addEventListener('click', () => portfolioModal.classList.remove('active'));
+portfolioModal.addEventListener('click', (e) => {
+  if (e.target === portfolioModal) portfolioModal.classList.remove('active');
+});
+
+portfolioSymbol.addEventListener('change', () => {
+  const stock = stockData.find((item) => item.symbol === portfolioSymbol.value);
+  if (stock && !portfolioAveragePrice.value) portfolioAveragePrice.value = stock.price;
+});
+
+portfolioForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  setPortfolioMessage('', '');
+  portfolioSubmitBtn.disabled = true;
+  portfolioSubmitBtn.textContent = 'Saving...';
+
+  try {
+    const res = await authedFetch('/api/portfolio', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        symbol: portfolioSymbol.value,
+        quantity: portfolioQuantity.value,
+        average_price: portfolioAveragePrice.value
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setPortfolioMessage(data.error || 'Could not save position.', 'error');
+      return;
+    }
+    portfolioQuantity.value = '';
+    portfolioAveragePrice.value = '';
+    setPortfolioMessage('Position saved.', 'success');
+    await loadPortfolio();
+  } catch (err) {
+    setPortfolioMessage('Network error while saving position.', 'error');
+  } finally {
+    portfolioSubmitBtn.disabled = false;
+    portfolioSubmitBtn.textContent = 'Save Position';
+  }
+});
+
+window.deletePortfolioPosition = async function(symbol) {
+  try {
+    const res = await authedFetch(`/api/portfolio/${encodeURIComponent(symbol)}`, { method: 'DELETE' });
+    if (res.ok) {
+      setPortfolioMessage('Position removed.', 'success');
+      await loadPortfolio();
+    }
+  } catch (err) {
+    setPortfolioMessage('Could not remove position.', 'error');
+  }
+};
+
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -1091,6 +1432,7 @@ if (Notification.permission === 'default') {
 
 // Initial Language Render
 setLanguage(currentLang);
+initGoogleLogin();
 
 // Initial User Area Render
 updateUserArea();
