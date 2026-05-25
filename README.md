@@ -1,3 +1,5 @@
+İsim: PACOME BERINYUY FONDZENYUY
+Öğrenci no: 24080410151
 # SSE Live Ticker
 
 SSE Live Ticker is a real-time market dashboard built for the BMU1208 Web Based Programming final project. It streams simulated stock, BIST, crypto, and forex prices with Server-Sent Events and provides authenticated watchlists and price alerts.
