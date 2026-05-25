@@ -1,4 +1,5 @@
 İsim: PACOME BERINYUY FONDZENYUY
+
 Öğrenci no: 24080410151
 # SSE Live Ticker
 
