@@ -196,7 +196,47 @@ BIST ve global piyasa sembollerini ders, analiz veya demo amacıyla takip eden b
 | Eğitim amaçlı kod okunabilirliği | Yüksek | Düşük | Düşük | Düşük | Düşük |
 | BIST + crypto + forex tek demo | Var | Var | Kısmen | Var | Crypto ağırlıklı |
 
-### 6.2 SWOT
+### 6.2 Detaylı Rakip İncelemesi
+
+Rakip ekran görüntüleri `docs/screenshots/competitors/` klasöründe tutulmuştur. Görseller raporda rakip arayüz yoğunluğu, ürün konumlandırması ve özellik kapsamı karşılaştırması için kanıt olarak kullanılmıştır.
+
+#### TradingView
+
+- URL: https://www.tradingview.com/
+- Kuruluş yılı: 2011
+- Kullanıcı tabanı: Küresel trader, yatırımcı ve teknik analiz topluluğu.
+- Fiyatlandırma: Ücretsiz plan ve ücretli abonelikler; gelişmiş grafik, alarm ve veri özellikleri ücretli planlarda genişler.
+- Güçlü yönler: Çok güçlü grafik araçları; geniş topluluk ve fikir paylaşımı; çok sayıda piyasa ve broker entegrasyonu.
+- Zayıf yönler: Yeni kullanıcı için arayüz yoğun olabilir; bazı gelişmiş özellikler abonelik gerektirir; açık kaynak olmadığı için kod ve mimari incelenemez.
+- Ekran görüntüsü: `docs/screenshots/competitors/tradingview.png`
+
+![TradingView rakip ekran görüntüsü](docs/screenshots/competitors/tradingview.png)
+
+#### Yahoo Finance
+
+- URL: https://finance.yahoo.com/
+- Kuruluş yılı: 1997
+- Kullanıcı tabanı: Haber, piyasa takibi ve portföy izleme isteyen geniş bireysel yatırımcı kitlesi.
+- Fiyatlandırma: Reklam destekli ücretsiz kullanım ve gelişmiş analizler için ücretli Yahoo Finance Plus planları.
+- Güçlü yönler: Haber ve piyasa verisi birlikte sunulur; hisse, endeks, emtia ve kripto kapsamı geniştir; portföy ve mobil kullanım olgundur.
+- Zayıf yönler: Reklam ve haber yoğunluğu hızlı ticker deneyimini dağıtabilir; bazı analiz özellikleri ücretli plana bağlıdır; arayüz eğitim amaçlı sade bir kod örneği sunmaz.
+- Ekran görüntüsü: `docs/screenshots/competitors/yahoo-finance.png`
+
+![Yahoo Finance rakip ekran görüntüsü](docs/screenshots/competitors/yahoo-finance.png)
+
+#### CoinMarketCap
+
+- URL: https://coinmarketcap.com/
+- Kuruluş yılı: 2013
+- Kullanıcı tabanı: Kripto para yatırımcıları, araştırmacılar ve piyasa verisi kullanan geliştiriciler.
+- Fiyatlandırma: Web arayüzü ücretsizdir; API tarafında ücretsiz ve ücretli kullanım seviyeleri bulunur.
+- Güçlü yönler: Kripto varlık listeleri ve sıralamaları çok kapsamlıdır; watchlist ve portföy özellikleri güçlüdür; API ve ekosistem bilinirliği yüksektir.
+- Zayıf yönler: Kapsam ağırlıklı olarak kripto piyasasıdır; BIST/forex gibi farklı piyasa tipleri aynı odakta değildir; sayfa yoğunluğu ve reklam/promosyon alanları sade takip deneyimini azaltabilir.
+- Ekran görüntüsü: `docs/screenshots/competitors/coinmarketcap.png`
+
+![CoinMarketCap rakip ekran görüntüsü](docs/screenshots/competitors/coinmarketcap.png)
+
+### 6.3 SWOT
 
 | Güçlü Yönler | Zayıf Yönler |
 | --- | --- |
@@ -212,7 +252,7 @@ BIST ve global piyasa sembollerini ders, analiz veya demo amacıyla takip eden b
 | PostgreSQL ile kolay büyüme | Harici API rate limitleri |
 | Teknik analiz modülleri | Yanlış yorumlanan simülasyon verisi |
 
-### 6.3 Positioning Statement
+### 6.4 Positioning Statement
 
 **FOR** hızlı ve sade piyasa takibi isteyen bireysel kullanıcılar,  
 **WHO** farklı piyasa türlerini tek ekranda izlemek ister,  

@@ -16,3 +16,11 @@ npm run capture:screenshots
 | `06-mobile.png` | Responsive mobile viewport at 390px width. |
 | `07-empty-error-state.png` | Empty/error state after a search with no matching symbols. |
 | `08-theme-ocean.png` | Alternate theme variant for UI customization. |
+
+## Competitor Evidence
+
+| File | Report Caption |
+| --- | --- |
+| `competitors/tradingview.png` | TradingView homepage and product positioning screenshot. |
+| `competitors/yahoo-finance.png` | Yahoo Finance market overview and ticker strip screenshot. |
+| `competitors/coinmarketcap.png` | CoinMarketCap crypto market overview screenshot. |

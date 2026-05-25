@@ -21,6 +21,9 @@ const screenshotFiles = [
   ['docs/screenshots/06-mobile.png', 'Figure A6 - Responsive mobile view'],
   ['docs/screenshots/07-empty-error-state.png', 'Figure A7 - Empty/error search state'],
   ['docs/screenshots/08-theme-ocean.png', 'Figure A8 - Ocean theme variant'],
+  ['docs/screenshots/competitors/tradingview.png', 'Figure A9 - TradingView competitor homepage'],
+  ['docs/screenshots/competitors/yahoo-finance.png', 'Figure A10 - Yahoo Finance market overview'],
+  ['docs/screenshots/competitors/coinmarketcap.png', 'Figure A11 - CoinMarketCap crypto market overview'],
 ];
 
 function ensureCleanDir(dir) {
