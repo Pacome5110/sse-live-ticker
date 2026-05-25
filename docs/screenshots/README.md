@@ -24,3 +24,18 @@ npm run capture:screenshots
 | `competitors/tradingview.png` | TradingView homepage and product positioning screenshot. |
 | `competitors/yahoo-finance.png` | Yahoo Finance market overview and ticker strip screenshot. |
 | `competitors/coinmarketcap.png` | CoinMarketCap crypto market overview screenshot. |
+
+## UI Design Evidence
+
+Generated with:
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/generate-ui-design-assets.ps1
+```
+
+| File | Report Caption |
+| --- | --- |
+| `ui-design/01-sitemap.png` | Application sitemap for main navigation and feature groups. |
+| `ui-design/02-user-flow.png` | Main user flow from public dashboard to personalized features. |
+| `ui-design/03-landing-wireframe.png` | Low-fidelity first screen wireframe. |
+| `ui-design/04-dashboard-mockup.png` | High-fidelity dashboard mockup based on the implemented UI. |
