@@ -27,6 +27,7 @@ dist/
 build/
 .docx-build/
 *.docx.zip
+*.docx
 .nyc_output/
 .vite/
 .cache/
